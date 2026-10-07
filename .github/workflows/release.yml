@@ -1,0 +1,93 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check tag matches pyproject version
+        run: |
+          VERSION=$(python -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          echo "pyproject: $VERSION  tag: ${GITHUB_REF_NAME}"
+          test "v$VERSION" = "${GITHUB_REF_NAME}" || { echo "Tag neodpovida verzi v pyproject.toml"; exit 1; }
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Install and test
+        run: |
+          python -m pip install --upgrade pip build
+          pip install -e ".[dev]"
+          pytest
+
+      - name: Build wheel and sdist
+        run: python -m build
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build Claude Desktop extension (.mcpb)
+        run: python scripts/build_mcpb.py dist
+
+      - name: Smoke test the .mcpb with uv (as Claude Desktop runs it)
+        run: |
+          pip install uv
+          mkdir -p /tmp/ext && cd /tmp/ext && unzip -q "$GITHUB_WORKSPACE/dist/isir-mcp-${VERSION}.mcpb"
+          python - <<'EOF'
+          import asyncio, os
+          from mcp import ClientSession, StdioServerParameters
+          from mcp.client.stdio import stdio_client
+          async def main():
+              env = {**os.environ, "ISIR_CACHE_DIR": "/tmp/extcache", "TESSERACT_CMD": "", "ISIR_CONTACT": "", "ISIR_DAILY_LIMIT": "2500", "ISIR_OCR_LANG": "ces+eng"}
+              p = StdioServerParameters(command="uv", args=["run", "--directory", "/tmp/ext", "src/server.py"], env=env)
+              async with stdio_client(p) as (r, w):
+                  async with ClientSession(r, w) as s:
+                      await s.initialize()
+                      n = len((await s.list_tools()).tools)
+                      assert n == 9, n
+                      print("mcpb OK, tools:", n)
+          asyncio.run(main())
+          EOF
+
+      - name: Build source zip (bez .git)
+        run: |
+          git archive --format=zip --prefix=isir-mcp-${VERSION}/ -o dist/isir-mcp-${VERSION}-src.zip HEAD
+          ls -la dist/
+
+      - name: Release notes from CHANGELOG
+        run: |
+          python - <<'EOF'
+          import os, re
+          v = os.environ["VERSION"]
+          txt = open("CHANGELOG.md", encoding="utf-8").read()
+          m = re.search(rf"^## {re.escape(v)}.*?$(.*?)(?=^## |\Z)", txt, re.M | re.S)
+          body = m.group(1).strip() if m else "Viz CHANGELOG.md."
+          body += ("\n\n### Instalace do Claude Desktop\n\nStáhněte `isir-mcp-" + v + ".mcpb` a otevřete ho dvojklikem "
+                   "(nebo Claude Desktop → Settings → Extensions → Advanced settings → Install Extension). "
+                   "Pro OCR skenů nainstalujte Tesseract OCR s češtinou a cestu k němu zadejte v nastavení rozšíření.\n\n"
+                   "### Ostatní soubory\n\n`pip install isir_mcp-" + v + "-py3-none-any.whl` (Python balíček), "
+                   "`isir-mcp-" + v + "-src.zip` (zdrojové kódy).")
+          open("release_notes.md", "w", encoding="utf-8").write(body)
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: isir-mcp ${{ env.VERSION }}
+          body_path: release_notes.md
+          files: |
+            dist/*.mcpb
+            dist/*.whl
+            dist/*.tar.gz
+            dist/*-src.zip

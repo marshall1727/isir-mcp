@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "isir-mcp"
+version = "0.1.0"
+description = "MCP server for the Czech insolvency register ISIR (isir.justice.cz): lookup, case detail, documents, OCR."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "marshall1727" }]
+keywords = ["mcp", "model-context-protocol", "isir", "insolvency", "insolvenční rejstřík", "czech", "legal", "ocr"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Legal Industry",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: Czech",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business",
+]
+dependencies = [
+    "mcp>=1.2",
+    "httpx>=0.27",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    "pypdf>=4.0",
+    "pypdfium2>=4.30",
+    "pytesseract>=0.3.10",
+    "Pillow>=10.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6", "build>=1.2", "tomli>=2.0; python_version < '3.11'"]
+
+[project.urls]
+Homepage = "https://github.com/marshall1727/isir-mcp"
+Issues = "https://github.com/marshall1727/isir-mcp/issues"
+
+[project.scripts]
+isir-mcp = "isir_mcp.server:main"
+
+[tool.setuptools.packages.find]
+include = ["isir_mcp*"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

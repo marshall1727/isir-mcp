@@ -1,0 +1,93 @@
+{
+  "manifest_version": "0.4",
+  "name": "isir-mcp",
+  "display_name": "Insolvenční rejstřík (ISIR)",
+  "version": "0.1.0",
+  "description": "Insolvenční rejstřík ČR: lustrace dlužníků, detail řízení, dokumenty včetně OCR skenů a fulltextu.",
+  "long_description": "MCP server pro veřejný insolvenční rejstřík **ISIR** (isir.justice.cz).\n\n- lustrace podle IČO, RČ, jména/názvu nebo spisové značky (oficiální webová služba MSp)\n- hlavička řízení, insolvenční správce, lhůty, události oddílů A/B/C/D/P\n- stažení dokumentů, textová vrstva + **OCR skenů** (Tesseract, čeština), rozbalení PDF portfolií\n- fulltextové hledání napříč dokumenty řízení\n- tok událostí rejstříku pro sledování změn\n\nServer dodržuje Podmínky provozu ISIR (max. 40 požadavků/min, 2 500/den). Pro OCR skenovaných dokumentů je nutné mít nainstalovaný Tesseract OCR s českými daty (Windows: https://github.com/UB-Mannheim/tesseract/wiki).\n\nStažené dokumenty obsahují osobní údaje z veřejného rejstříku – zacházejte s cache jako se spisovým materiálem.",
+  "author": {
+    "name": "marshall1727",
+    "url": "https://github.com/marshall1727"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marshall1727/isir-mcp.git"
+  },
+  "homepage": "https://github.com/marshall1727/isir-mcp",
+  "documentation": "https://github.com/marshall1727/isir-mcp#readme",
+  "support": "https://github.com/marshall1727/isir-mcp/issues",
+  "icon": "icon.png",
+  "server": {
+    "type": "uv",
+    "entry_point": "src/server.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": ["run", "--directory", "${__dirname}", "src/server.py"],
+      "env": {
+        "ISIR_CACHE_DIR": "${user_config.cache_dir}",
+        "TESSERACT_CMD": "${user_config.tesseract_cmd}",
+        "ISIR_OCR_LANG": "${user_config.ocr_lang}",
+        "ISIR_DAILY_LIMIT": "${user_config.daily_limit}",
+        "ISIR_CONTACT": "${user_config.contact}"
+      }
+    }
+  },
+  "tools": [
+    { "name": "isir_lustrace", "description": "Hledání insolvenčních řízení podle IČO, RČ, jména/názvu nebo spisové značky" },
+    { "name": "isir_detail_rizeni", "description": "Hlavička řízení: dlužník, stav, soud, správce, lhůty, počty událostí v oddílech" },
+    { "name": "isir_udalosti", "description": "Události jednoho oddílu (A/B/C/D/P) včetně ID dokumentů a právní moci" },
+    { "name": "isir_dokumenty", "description": "Plochý seznam všech dokumentů řízení" },
+    { "name": "isir_stahnout_dokument", "description": "Stáhne PDF dokumentu do lokální cache" },
+    { "name": "isir_text_dokumentu", "description": "Plný text dokumentu: textová vrstva + OCR skenů, přílohy PDF portfolií" },
+    { "name": "isir_hledat_v_dokumentech", "description": "Fulltextové hledání napříč dokumenty řízení" },
+    { "name": "isir_tok_udalosti", "description": "Tok událostí celého rejstříku (sledování změn)" },
+    { "name": "isir_stav_serveru", "description": "Využití limitů, cache a dostupnost OCR" }
+  ],
+  "keywords": ["isir", "insolvence", "insolvenční rejstřík", "justice", "czech", "legal", "ocr", "právo"],
+  "license": "MIT",
+  "privacy_policies": ["https://isir.justice.cz/isir/common/stat.do?kodStranky=PROVOZPODMINKY"],
+  "compatibility": {
+    "claude_desktop": ">=0.13.0",
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "python": ">=3.10"
+    }
+  },
+  "user_config": {
+    "cache_dir": {
+      "type": "directory",
+      "title": "Složka cache",
+      "description": "Kam ukládat stažená PDF, extrahovaný text a metadata (obsahuje osobní údaje dlužníků).",
+      "required": false,
+      "default": "${HOME}/.isir-mcp/cache"
+    },
+    "tesseract_cmd": {
+      "type": "file",
+      "title": "Tesseract OCR (tesseract.exe)",
+      "description": "Cesta k programu Tesseract pro OCR skenovaných dokumentů. Prázdné = hledat v PATH. Windows obvykle C:\\Program Files\\Tesseract-OCR\\tesseract.exe.",
+      "required": false
+    },
+    "ocr_lang": {
+      "type": "string",
+      "title": "Jazyky OCR",
+      "description": "Kódy jazyků Tesseractu oddělené +, např. ces+eng.",
+      "required": false,
+      "default": "ces+eng"
+    },
+    "daily_limit": {
+      "type": "number",
+      "title": "Denní limit požadavků na ISIR",
+      "description": "Podmínky provozu ISIR povolují nejvýše 3000/den; výchozí 2500 ponechává rezervu.",
+      "required": false,
+      "default": 2500,
+      "min": 100,
+      "max": 3000
+    },
+    "contact": {
+      "type": "string",
+      "title": "Kontakt (nepovinné)",
+      "description": "E-mail nebo web uvedený v User-Agent požadavků na ISIR, aby provozovatel věděl, kdo přistupuje.",
+      "required": false
+    }
+  }
+}
