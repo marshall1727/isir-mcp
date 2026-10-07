@@ -63,6 +63,7 @@ def stage(dst: Path, version: str) -> None:
 
 
 def pack(src: Path, out_file: Path) -> str:
+    out_file = out_file.resolve()
     out_file.parent.mkdir(parents=True, exist_ok=True)
     if out_file.exists():
         out_file.unlink()
@@ -84,7 +85,7 @@ def pack(src: Path, out_file: Path) -> str:
 
 
 def main() -> None:
-    out_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "dist"
+    out_dir = (Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "dist").resolve()
     version = project_version()
     out_file = out_dir / f"isir-mcp-{version}.mcpb"
     with tempfile.TemporaryDirectory() as tmp:
